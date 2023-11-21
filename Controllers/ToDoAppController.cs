@@ -19,11 +19,12 @@ namespace toDoApp_Server.Controllers
         
         public JsonResult GetNotes()
         {
+            
             try
             {
+                var oNotes = new List<toDoAppModel>();
                 var connection = new DataConnection();
                 var procedure = "sp_ListTasks";
-                var tb = new DataTable();
                 using(var conn = new SqlConnection(connection.GetString()))
                 {
                     using(var sqlCmd = new SqlCommand(procedure, conn))
@@ -31,12 +32,22 @@ namespace toDoApp_Server.Controllers
                         sqlCmd.CommandType = CommandType.StoredProcedure;
                         conn.Open();
                         var dReader = sqlCmd.ExecuteReader();
-                        tb.Load(dReader);
+                        while (dReader.Read())
+                        {
+                            oNotes.Add(
+                                new toDoAppModel
+                                {
+                                    id = Convert.ToInt32(dReader["id"]),
+                                    task = dReader["task"].ToString(),
+                                    expDate = dReader["expDate"].ToString(),
+                                    notes = dReader["notes"].ToString()
+                                }); 
+                        }
                         dReader.Close();
                         conn.Close();
                     }
 
-                    return new JsonResult(tb);
+                    return new JsonResult(oNotes);
                 }                
             }catch(Exception e)
             {
@@ -47,13 +58,12 @@ namespace toDoApp_Server.Controllers
 
         [HttpPost]
         [Route("Create")]
-        public JsonResult CreateNote([FromForm] toDoAppModel note)
+        public JsonResult CreateNote(toDoAppModel note)
         {
             try
             {
                 var connection = new DataConnection();
                 var procedure = "sp_CreateNote";
-                var tb = new DataTable();
                 using(var conn = new SqlConnection(connection.GetString()))
                 {
                     using (var sqlCmd = new SqlCommand(procedure, conn))
@@ -68,8 +78,9 @@ namespace toDoApp_Server.Controllers
                     }
                 }
                 return new JsonResult("Successfully inserted");
-            }catch(Exception e)
-            {
+
+            }catch(Exception e){
+
                 Console.WriteLine(e);
                 return new JsonResult(e);
             }
@@ -81,9 +92,9 @@ namespace toDoApp_Server.Controllers
         {
             try
             {
+                var note = new toDoAppModel();
                 var connection = new DataConnection();
                 var procedure = "sp_GetANote";
-                var tb = new DataTable();
                 using (var conn = new SqlConnection(connection.GetString()))
                 {
                     using (var sqlCmd = new SqlCommand(procedure, conn))
@@ -92,19 +103,30 @@ namespace toDoApp_Server.Controllers
                         sqlCmd.Parameters.AddWithValue("id", id);
                         conn.Open();
                         var dReader = sqlCmd.ExecuteReader();
-                        tb.Load(dReader);
+                        if (dReader.Read())
+                        {
+                            note.id = Convert.ToInt32(dReader["id"]);
+                            note.task = dReader["task"].ToString();
+                            note.expDate = dReader["expDate"].ToString();
+                            note.notes = dReader["notes"].ToString();
+                        }
+                        else
+                        {
+                            note = null;
+                            Console.WriteLine("something went wrong");
+                        }
                         dReader.Close();
                         conn.Close();
                     }
                 }
-                return new JsonResult(tb);
+                return new JsonResult(note);
             }
             catch (Exception e) { return new JsonResult(e); }
         }
 
         [HttpPut]
         [Route("updateNote")]
-        public JsonResult UpdateNote([FromForm] string[] notes)
+        public JsonResult UpdateNote(toDoAppModel notes)
         {
             try
             {
@@ -115,10 +137,10 @@ namespace toDoApp_Server.Controllers
                     using(var sqlCmd = new SqlCommand(procedure, conn))
                     {
                         sqlCmd.CommandType = CommandType.StoredProcedure;
-                        sqlCmd.Parameters.AddWithValue("id", notes[0]);
-                        sqlCmd.Parameters.AddWithValue("task", notes[1]);
-                        sqlCmd.Parameters.AddWithValue("expDate", notes[2]);
-                        sqlCmd.Parameters.AddWithValue("notes", notes[3]);
+                        sqlCmd.Parameters.AddWithValue("id", notes.id);
+                        sqlCmd.Parameters.AddWithValue("task", notes.task);
+                        sqlCmd.Parameters.AddWithValue("expDate", notes.expDate);
+                        sqlCmd.Parameters.AddWithValue("notes", notes.notes);
                         conn.Open();
                         sqlCmd.ExecuteNonQuery();
                         conn.Close();
