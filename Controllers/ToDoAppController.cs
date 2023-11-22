@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualBasic;
+using Newtonsoft.Json.Schema;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Data;
 using System.Data.SqlClient;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using System.Security.Cryptography.X509Certificates;
 using toDoApp_Server.Data;
 using toDoApp_Server.Models;
@@ -55,6 +58,106 @@ namespace toDoApp_Server.Controllers
                 Console.WriteLine(e);
                 return new JsonResult(null);
             }            
+        }
+
+        [HttpPut]
+        [Route("setAsComplete")]
+        public JsonResult SetTaskAsComplete(string id)
+        {
+            try
+            {
+                var connection = new DataConnection();
+                var procedure = "sp_markComplete";
+                var ans = false;
+                using (var conn = new SqlConnection(connection.GetString()))
+                {
+                    using (var sqlCmd = new SqlCommand(procedure, conn))
+                    {
+                        sqlCmd.CommandType = CommandType.StoredProcedure;
+                        sqlCmd.Parameters.AddWithValue("id", id);
+                        conn.Open();
+                        sqlCmd.ExecuteNonQuery();
+                        ans = true;
+                        conn.Close();
+                    }
+                }
+
+                return new JsonResult(ans);
+
+            } catch (Exception e) {
+
+                return new JsonResult(e);
+
+                    }
+
+        }
+
+        [HttpPut]
+        [Route("SetAsIncomplete")]
+
+        public JsonResult SetIncomplete(string id)
+        {
+            try
+            {
+                var ans=false;
+                var connection = new DataConnection();
+                var procedure = "sp_SetAsIncomplete";
+                using(var conn = new SqlConnection(connection.GetString()))
+                {
+                    using(var sqlCmd= new SqlCommand(procedure, conn)) {
+                        sqlCmd.CommandType = CommandType.StoredProcedure;
+                        sqlCmd.Parameters.AddWithValue("id", id);
+                        conn.Open();
+                        sqlCmd.ExecuteNonQuery();
+                        ans = true;
+                        conn.Close();
+
+                    }
+                }
+                return new JsonResult(ans);
+;            }catch(Exception ex)
+            {
+                return new JsonResult(ex);
+            }
+        }
+
+        [HttpGet]
+        [Route("GetComplete")]
+
+        public JsonResult GetCompleteTasks()
+        {
+            try
+            {
+                var oNote = new List<toDoAppModel>();
+                var connection = new DataConnection();
+                var procedure = "sp_ListCompleteTasks";
+                
+                using(var conn = new SqlConnection(connection.GetString()))
+                {
+                    using(var sqlCmd = new SqlCommand(procedure, conn))
+                    {
+                        sqlCmd.CommandType = CommandType.StoredProcedure;
+                        conn.Open();
+                        using(var dReader = sqlCmd.ExecuteReader())
+                        {
+                            while (dReader.Read())
+                            {
+                                oNote.Add(new toDoAppModel
+                                {
+                                    id = Convert.ToInt32(dReader["id"]),
+                                    task = dReader["task"].ToString(),
+                                    expDate = dReader["expDate"].ToString(),
+                                    notes = dReader["notes"].ToString()
+                                });
+                            }
+                        }
+                    }
+                }
+                return new JsonResult(oNote);
+            }catch(Exception ex)
+            {
+                return new JsonResult(ex);
+            }
         }
 
         [HttpPost]
@@ -200,6 +303,7 @@ namespace toDoApp_Server.Controllers
                 return new JsonResult(ex);
             }
          }
+                
 
         [HttpPost]
         [Route("Login")]
