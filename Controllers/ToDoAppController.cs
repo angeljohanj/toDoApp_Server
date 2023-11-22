@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Data;
 using System.Data.SqlClient;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using toDoApp_Server.Data;
@@ -172,6 +173,71 @@ namespace toDoApp_Server.Controllers
                 return new JsonResult("Deleted");
             }catch(Exception e) { return new JsonResult(e); }
         }
+
+        [HttpPost]
+        [Route("UserAdd")]
+        public JsonResult UserAdd(UserModel nUser)
+        {
+            try
+            {
+                var connection = new DataConnection();
+                var procedure= "sp_UserAdd";
+                using(var conn = new SqlConnection(connection.GetString()))
+                {
+                    using(var sqlCmd = new SqlCommand(procedure, conn))
+                    {
+                        sqlCmd.CommandType = CommandType.StoredProcedure;
+                        sqlCmd.Parameters.AddWithValue("username", nUser.username);
+                        sqlCmd.Parameters.AddWithValue("password", nUser.password);
+                        conn.Open();
+                        sqlCmd.ExecuteNonQuery();
+                        conn.Close();
+                    }
+                }
+                return new JsonResult("User added successfully!");
+            }catch(Exception ex)
+            {
+                return new JsonResult(ex);
+            }
+         }
+
+        [HttpPost]
+        [Route("Login")]
+
+        public JsonResult Login(UserModel user)
+        {
+            try
+            {
+                var connection = new DataConnection();
+                var procedure = "sp_ValidateLogin";
+                using(var conn = new SqlConnection(connection.GetString()))
+                {
+                    using(var sqlCmd = new SqlCommand(procedure, conn))
+                    {
+                        sqlCmd.CommandType = CommandType.StoredProcedure;
+                        sqlCmd.Parameters.AddWithValue("username", user.username);
+                        sqlCmd.Parameters.AddWithValue("password", user.password);
+                        conn.Open();
+                        using(var dReader = sqlCmd.ExecuteReader())
+                        {
+                            if (dReader.Read())
+                            {
+                                user.id = Convert.ToInt32(dReader["id"]);
+                                user.username = dReader["username"].ToString();                                
+                            }
+                            dReader.Close();
+                        }
+                        conn.Close();
+                        
+                    }
+                }
+                return new JsonResult(user);
+            }catch(Exception ex)
+            {
+                return new JsonResult(ex);
+            }
+        }
+
     }
     
 }
